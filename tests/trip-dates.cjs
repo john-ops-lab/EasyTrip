@@ -1,0 +1,14 @@
+const assert=require('node:assert/strict');
+const d=require('../dist/trip.js');
+assert.equal(d.previous('2027-10-07'),'2026-10-07');
+assert.equal(d.previous('2028-02-29'),'2027-02-28');
+assert.equal(d.addMonths('2026-12-31',2),'2027-02-28');
+assert.equal(d.validate('2026-09-18','2026-11-18','2026-09-18'),'');
+assert.ok(d.validate('2026-09-18','2026-11-19','2026-09-18'));
+assert.ok(d.validate('2026-09-17','2026-09-20','2026-09-18'));
+assert.ok(d.validate('2026-10-01','2026-09-20','2026-09-18'));
+assert.equal(d.valid('2027-02-29'),false);
+assert.deepEqual(d.list('2026-12-31','2027-01-02').map(x=>d.previous(x)),['2025-12-31','2026-01-01','2026-01-02']);
+assert.equal(d.forecast('2026-10-18','2026-10-20','2026-09-18'),null);
+assert.deepEqual(d.forecast('2026-09-28','2026-10-07','2026-09-18'),{start:'2026-09-28',end:'2026-10-03'});
+console.log('Date boundaries, leap year, cross year and forecast limits passed');
