@@ -9,3 +9,7 @@ r=await worker.fetch(new Request('https://trip.example/_AMapService/v3/place/tex
 r=await worker.fetch(new Request('https://trip.example/'),env);assert.match(await r.text(),/EasyTrip/);
 r=await worker.fetch(new Request('https://trip.example/.env'),env);assert.equal(r.status,404);
 console.log('PASS: server-only secret, fixed upstream, key override, cross-origin rejection, missing config, static assets');
+
+r=await worker.fetch(new Request('https://trip.example/_AMapService/v3/place/text?callback=jsonp_test_123'),env);assert.match(r.headers.get('content-type'),/application\/javascript/);
+r=await worker.fetch(new Request('https://trip.example/_AMapService/v3/place/text?callback=alert(1)'),env);assert.equal(r.status,400);
+console.log('PASS: JSONP content type and callback validation');
