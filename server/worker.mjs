@@ -1,5 +1,5 @@
 const json=(value,status=200)=>new Response(JSON.stringify(value),{status,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff'}});
-export function createWorker(assets,requestUpstream=fetch){return {async fetch(request,env){
+export function createWorker(assets,requestUpstream=(...args)=>globalThis.fetch(...args)){return {async fetch(request,env){
  const url=new URL(request.url);
  if(request.method!=='GET'&&request.method!=='HEAD')return json({error:'Method not allowed'},405);
  if(url.pathname==='/map-config.json')return json({provider:'amap',key:env.AMAP_JS_KEY||'',serviceHost:env.APP_ORIGIN?env.APP_ORIGIN.replace(/\/$/,'')+'/_AMapService':''});
@@ -12,12 +12,13 @@ export function createWorker(assets,requestUpstream=fetch){return {async fetch(r
   if(!/^\/v[345]\/[a-zA-Z0-9/_-]+$/.test(path))return json({error:'Invalid map endpoint'},400);
   const target=new URL(path.startsWith('/v4/map/styles')?'https://webapi.amap.com':'https://restapi.amap.com');target.pathname=path;target.search=url.search;
   target.searchParams.set('key',env.AMAP_JS_KEY);target.searchParams.set('jscode',env.AMAP_SECURITY_CODE);
-  try{const upstream=await requestUpstream(target,{method:'GET',headers:{'Referer':env.APP_ORIGIN+'/'},redirect:'error',signal:AbortSignal.timeout(18000)});
+  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),18000);
+  try{const upstream=await requestUpstream(target.toString(),{method:'GET',headers:{'Referer':env.APP_ORIGIN+'/'},redirect:'manual',signal:controller.signal});
    if(!upstream.ok)return json({error:'Map service unavailable'},502);
    const headers=new Headers({'content-type':callback?'application/javascript; charset=utf-8':(upstream.headers.get('content-type')||'application/octet-stream'),'cache-control':'no-store','x-content-type-options':'nosniff'});
    // Never forward cookies, redirect locations or credentials from the upstream service.
    return new Response(request.method==='HEAD'?null:upstream.body,{status:upstream.status,headers});
-  }catch{return json({error:'Map service connection failed'},502);}
+  }catch(error){const safe=String(error?.message||'Unknown error').split(env.AMAP_SECURITY_CODE).join('[redacted]').split(env.AMAP_JS_KEY).join('[redacted]').replace(/https?:\/\/\S+/g,'[upstream]');console.error('amap_proxy_failed',error?.name,safe);return json({error:'Map service connection failed'},502);}finally{clearTimeout(timer);}
  }
  const path=url.pathname==='/'?'/index.html':url.pathname,asset=assets[path];
  if(!asset)return new Response('Not found',{status:404});
