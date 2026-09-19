@@ -4,7 +4,7 @@
 
 ## 当前状态
 
-接入代码已准备，但未配置实际开发者账号，**尚未完成高德底图、搜索权限及线上端到端验收**。`map-config.json` 默认请求高德；缺少配置或脚本加载失败时明确提示并继续使用 OpenStreetMap。现有线上站点和 v0.1.0 不因本分支改变。
+接入代码已准备，但尚未配置实际运行密钥，**尚未完成高德底图、搜索权限及线上端到端验收**。`map-config.json` 默认请求高德；缺少配置或脚本加载失败时明确提示并继续使用 OpenStreetMap。现有线上站点和 v0.1.0 不因本分支改变。
 
 ## 开通
 
@@ -22,7 +22,7 @@
 }
 ```
 
-JS API Key 会由浏览器发送给高德，是前端标识；securityJsCode 由代理保管。此仓库不包含运行中的安全代理，静态托管本身不能保管服务端密钥。部署者需要单独部署代理，或为站点增加服务器端代理路由。不要把 Web服务 Key 当成 JS API Key。
+JS API Key 会由浏览器发送给高德，是前端标识；securityJsCode 由代理保管。仓库已提供 `server/worker.mjs` 同源代理及 `scripts/build-worker.mjs` 打包脚本；静态托管本身不能保管服务端密钥，需部署生成的 Worker。配置运行时环境变量 `AMAP_JS_KEY`、`AMAP_SECURITY_CODE`（secret）和 `APP_ORIGIN`。由 `/map-config.json` 动态返回公开 Key 和代理地址，不返回安全密钥。不要把 Web服务 Key 当成 JS API Key。
 
 恢复原底图可将 `provider` 设置为 `osm`。调整配置后刷新页面。
 
@@ -41,3 +41,9 @@ JS API Key 会由浏览器发送给高德，是前端标识；securityJsCode 由
 已测试：缺少配置与脚本加载失败回退；模拟高德 SDK 的交互契约；地图数字和日期联动、隐藏/显示、刷新保留、搜索加入、自定义地点坐标保存和手机宽度。模拟 SDK 不证明真实高德服务已经可用。
 
 开通后的必要验收：真实 SDK 加载和域名校验、真实地图点位及中文地名、真实搜索与加入地点、数字/天气联动、已有浏览器数据保留，以及安全代理不会将 securityJsCode 返回浏览器。
+
+## 同源 Worker 构建
+
+运行 `node scripts/build-worker.mjs` 生成 `.worker-build/server/index.js`。该 Worker 内嵌 dist 中的静态资源，无额外资产绑定。代理固定请求高德官方域名并注入服务端安全密钥，不转发 Cookie、重定向位置或任意目标 URL。
+
+`node tests/amap-proxy.mjs` 覆盖密钥注入、客户端配置隔离、跨源限制、未配置和静态资源响应。
